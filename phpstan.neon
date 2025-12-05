@@ -3,13 +3,13 @@ parameters:
     paths:
         - plugins
         - middleware.php
-        - server.php
     excludePaths:
-        - vendor
-        - node_modules
-        - backup
-        - stubs
-        - libspech
+        analyseAndScan:
+            - vendor (?)
+            - node_modules (?)
+            - backup (?)
+            - stubs (?)
+            - libspech (?)
     scanDirectories:
         - libspech/plugins
     ignoreErrors:
