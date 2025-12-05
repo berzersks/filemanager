@@ -19,6 +19,8 @@ function portAlive(mixed $port): bool
 include 'libspech/plugins/autoloader.php';
 \libspech\Cli\cli::pcl("Running Tests...");
 \co\run(function () {
+    global $argv;
+    if (@$argv[1] !== '--fix')
     \libspech\Cli\cli::pcl(shell_exec('php run-tests.php'));
     $fixs = 'fixs.json';
     if (file_exists($fixs)) {
