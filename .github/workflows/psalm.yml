@@ -1,52 +1,105 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Psalm Security Scan
+name: CMake on a single platform
 
 on:
   push:
     branches: [ "master" ]
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: [ "master" ]
-  schedule:
-    - cron: '42 14 * * 4'
 
-permissions:
-  contents: read
+env:
+  BUILD_TYPE: Release
 
 jobs:
-  php-security:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download PHP 8.5.0 ZTS binary
+      - name: Instalar dependências do sistema
         run: |
-          sudo wget -O /usr/local/bin/php https://github.com/berzersks/pcg729/releases/download/current/php
-          sudo chmod +x /usr/local/bin/php
-          php -v
+          sudo apt-get update
+          sudo apt-get install -y \
+          build-essential \
+          autoconf \
+          automake \
+          cmake \
+          make \
+          gcc \
+          g++ \
+          pkg-config \
+          re2c \
+          bison \
+          flex \
+          m4 \
+          curl \
+          wget \
+          git \
+          unzip \
+          ca-certificates \
+          libtool \
+          libxml2 \
+          libxml2-dev \
+          libsqlite3-dev \
+          libssl-dev \
+          openssl \
+          libcurl4 \
+          libcurl4-openssl-dev \
+          zlib1g \
+          zlib1g-dev \
+          libzip-dev \
+          libjpeg-dev \
+          libpng-dev \
+          libwebp-dev \
+          libonig-dev \
+          libreadline-dev \
+          libgmp-dev \
+          libicu-dev \
+          libxslt1-dev \
+          libffi-dev \
+          libbz2-dev \
+          libfreetype6-dev \
+          libevent-dev \
+          libpcre3-dev \
+          libsqlite3-0 \
+          libgcc-12-dev \
+          libstdc++-12-dev
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          tools: composer
+      - name: Preparar ambiente PHP
+        run: |
+          ./bin/setup-runtime
+          bin/php composer install
+          bin/php bin/spc doctor --auto-fix
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
-      - name: Psalm Security Scan
-        uses: psalm/psalm-github-security-scan@f3e6fd9432bc3e44aec078572677ce9d2ef9c287
+      - name: Download extensões e bibliotecas
+        run: |
+          bin/php bin/spc download --for-extensions "bcg729,psampler,opus,swoole,bcmath,bz2,ctype,curl,dom,exif,fileinfo,filter,gd,gmp,hash,iconv,intl,json,mbstring,mysqli,mysqlnd,openssl,pcntl,pcre,PDO,pdo_mysql,Phar,posix,readline,Reflection,session,soap,sockets,sodium,SPL,sqlite3,uv,standard,tokenizer,yaml,zip,zlib"
+          bin/php bin/spc download --for-libs "curl,openssl,zlib,libxml2,sqlite,bzip2,xz,libzip,libjpeg,libpng,libwebp,oniguruma,freetype,gmp,icu,libxslt,libyaml,libevent"
 
-      - name: Upload Security Analysis results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
+      # -----------------------------------------------------------
+      # 🔥 BAIXAR PHP-SRC 8.5.0 DEPOIS DO SPC DOWNLOAD
+      # -----------------------------------------------------------
+      - name: Baixar e preparar php-src 8.5.0
+        run: |
+          mkdir -p source
+          cd source
+
+          echo "Baixando php-src 8.5.0..."
+          curl -L -o php-src.zip https://github.com/php/php-src/archive/refs/tags/php-8.5.0.zip
+
+          echo "Extraindo..."
+          unzip php-src.zip
+
+          echo "Movendo para source/php-src..."
+          EXTRACTED=$(ls -d php-src-* | head -n 1)
+          mv "$EXTRACTED" php-src
+
+          rm -f php-src.zip
+          ls -lah php-src
+
+      - name: Build
+        run: bin/php bin/spc build --build-cli "bcg729,psampler,opus,swoole,bcmath,bz2,ctype,curl,dom,exif,fileinfo,filter,gd,gmp,hash,iconv,intl,json,mbstring,mysqli,mysqlnd,openssl,pcntl,pcre,PDO,pdo_mysql,Phar,posix,readline,Reflection,session,soap,sockets,sodium,SPL,sqlite3,uv,standard,tokenizer,yaml,zip,zlib" --debug --enable-zts
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: buildroot/bin/php -i
