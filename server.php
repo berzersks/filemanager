@@ -1,5 +1,6 @@
 <?php
 
+\Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
 use plugins\Start\console as consoleDeclares;
 use Swoole\Coroutine as co;
 function portAlive(mixed $port): bool
@@ -22,15 +23,15 @@ include 'libspech/plugins/autoloader.php';
     $fixs = 'fixs.json';
     if (file_exists($fixs)) {
         $r = json_decode(file_get_contents($fixs), true)['fixes'];
+        print "Running fixes...\n";
         foreach ($r as $fix) {
             foreach ($fix['commands'] as $command) {
-                shell_exec($command);
+              print  shell_exec($command);
             }
         }
     }
 
 });
-
 
 
 include_once 'plugins/autoload.php';
